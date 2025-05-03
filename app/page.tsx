@@ -1,11 +1,8 @@
 "use client";
-import { useUpProvider } from "@/components/up-provider";
+
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { accounts } = useUpProvider();
-  const isConnected = accounts && accounts.length > 0;
-
   return (
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
@@ -20,7 +17,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button size="lg" className="bg-white text-blue-700 hover:bg-gray-100">
-              {isConnected ? 'Launch App' : 'Connect Universal Profile'}
+              Connect Universal Profile
             </Button>
             <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
               Learn More
