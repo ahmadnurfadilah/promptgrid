@@ -2,8 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
-import { UpProvider } from "@/components/up-provider";
-import { NavHeader } from "@/components/nav-header";
+// import { NavHeader } from "@/components/nav-header";
 import { cookieToInitialState } from "wagmi";
 import { getConfig } from "./config";
 import { headers } from "next/headers";
@@ -56,7 +55,7 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <NavHeader />
+            {/* <NavHeader /> */}
             {children}
           </ThemeProvider>
         </Providers>
