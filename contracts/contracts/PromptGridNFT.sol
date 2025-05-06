@@ -12,7 +12,10 @@ import {LSP8Mintable} from "@lukso/lsp-smart-contracts/contracts/LSP8Identifiabl
 
 // constants
 import {_LSP8_TOKENID_FORMAT_NUMBER} from "@lukso/lsp-smart-contracts/contracts/LSP8IdentifiableDigitalAsset/LSP8Constants.sol";
-import {_LSP4_TOKEN_TYPE_COLLECTION} from "@lukso/lsp-smart-contracts/contracts/LSP4DigitalAssetMetadata/LSP4Constants.sol";
+import {_LSP4_TOKEN_TYPE_COLLECTION, _LSP4_METADATA_KEY} from "@lukso/lsp-smart-contracts/contracts/LSP4DigitalAssetMetadata/LSP4Constants.sol";
+
+// libraries
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
 /**
  * @title PromptGridNFT
@@ -23,17 +26,23 @@ contract PromptGridNFT is LSP8Mintable {
     // Listing fee structure based on prompt type
     mapping(uint256 => uint256) public listingFees;
 
+    // Platform fee percentage (default 10%)
+    uint256 public platformFeePercentage = 10;
+
     // Prompt types: 1 = Text, 2 = Image, 3 = Audio, 4 = Video
     uint256 public constant TEXT_PROMPT = 1;
     uint256 public constant IMAGE_PROMPT = 2;
     uint256 public constant AUDIO_PROMPT = 3;
     uint256 public constant VIDEO_PROMPT = 4;
 
+    // Counter for token IDs
+    uint256 private _tokenIdCounter = 0;
+
     // Prompt metadata structure
     struct Prompt {
         uint256 promptType;
-        string content;
-        string category;
+        string name;
+        string description;
         uint256 price; // 0 for free prompts
         address creator;
         bool isActive;
@@ -59,6 +68,7 @@ contract PromptGridNFT is LSP8Mintable {
     );
     event PromptDeactivated(bytes32 indexed tokenId);
     event ListingFeeUpdated(uint256 promptType, uint256 newFee);
+    event PlatformFeeUpdated(uint256 newPercentage);
 
     constructor(
         string memory nftCollectionName,
@@ -82,16 +92,17 @@ contract PromptGridNFT is LSP8Mintable {
 
     /**
      * @dev Creates a new prompt as an NFT
-     * @param _promptType The type of prompt (1=Text, 2=Image, 3=Audio/Video)
-     * @param _content The prompt content or IPFS hash to content
-     * @param _category The category of the prompt
+     * @param _promptType The type of prompt (1=Text, 2=Image, 3=Audio, 4=Video)
+     * @param _name The prompt name
+     * @param _description The description of the prompt
      * @param _price The price for using the prompt (0 for free)
      */
     function createPrompt(
         uint256 _promptType,
-        string memory _content,
-        string memory _category,
-        uint256 _price
+        string memory _name,
+        string memory _description,
+        uint256 _price,
+        string memory metadata
     ) external payable returns (bytes32) {
         // Validate prompt type
         require(
@@ -105,20 +116,15 @@ contract PromptGridNFT is LSP8Mintable {
             "Insufficient listing fee"
         );
 
-        // Generate tokenId based on creator, type and timestamp
-        bytes32 tokenId = bytes32(
-            uint256(
-                keccak256(
-                    abi.encodePacked(msg.sender, _promptType, block.timestamp)
-                )
-            )
-        );
+        // Generate incremental tokenId
+        _tokenIdCounter++;
+        bytes32 tokenId = bytes32(uint256(_tokenIdCounter));
 
         // Create prompt struct
         Prompt memory newPrompt = Prompt({
             promptType: _promptType,
-            content: _content,
-            category: _category,
+            name: _name,
+            description: _description,
             price: _price,
             creator: msg.sender,
             isActive: true
@@ -132,6 +138,13 @@ contract PromptGridNFT is LSP8Mintable {
 
         // Mint the NFT to the creator
         _mint(msg.sender, tokenId, true, "");
+
+        // Set the metadata for the token
+        _setDataForTokenId(
+            tokenId,
+            _LSP4_METADATA_KEY,
+            getMetadata(metadata)
+        );
 
         emit PromptCreated(tokenId, msg.sender, _promptType, _price);
 
@@ -150,8 +163,12 @@ contract PromptGridNFT is LSP8Mintable {
         require(prompt.price > 0, "Prompt is free to use");
         require(msg.value >= prompt.price, "Insufficient payment");
 
-        // Transfer the payment to the creator
-        payable(prompt.creator).transfer(prompt.price);
+        // Calculate the fee split based on platform fee percentage
+        uint256 creatorShare = (prompt.price * (100 - platformFeePercentage)) / 100;
+        // Platform fee is automatically kept in the contract
+
+        // Transfer the creator's share
+        payable(prompt.creator).transfer(creatorShare);
 
         emit PromptPurchased(_tokenId, msg.sender, prompt.price);
     }
@@ -192,6 +209,16 @@ contract PromptGridNFT is LSP8Mintable {
     }
 
     /**
+     * @dev Updates the platform fee percentage (only callable by the owner)
+     * @param _newPercentage The new platform fee percentage
+     */
+    function updatePlatformFeePercentage(uint256 _newPercentage) external onlyOwner {
+        require(_newPercentage <= 100, "Percentage must be between 0 and 100");
+        platformFeePercentage = _newPercentage;
+        emit PlatformFeeUpdated(_newPercentage);
+    }
+
+    /**
      * @dev Returns details about a specific prompt
      * @param _tokenId The tokenId of the prompt
      */
@@ -202,8 +229,8 @@ contract PromptGridNFT is LSP8Mintable {
         view
         returns (
             uint256 promptType,
-            string memory content,
-            string memory category,
+            string memory name,
+            string memory description,
             uint256 price,
             address creator,
             bool isActive
@@ -212,8 +239,8 @@ contract PromptGridNFT is LSP8Mintable {
         Prompt memory prompt = prompts[_tokenId];
         return (
             prompt.promptType,
-            prompt.content,
-            prompt.category,
+            prompt.name,
+            prompt.description,
             prompt.price,
             prompt.creator,
             prompt.isActive
@@ -228,5 +255,10 @@ contract PromptGridNFT is LSP8Mintable {
         require(balance > 0, "No balance to withdraw");
 
         payable(owner()).transfer(balance);
+    }
+
+    function getMetadata(string memory metadata) public pure returns (bytes memory) {
+        bytes memory verfiableURI = bytes.concat(hex"00006f357c6a0020", keccak256(bytes(metadata)), abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(metadata))));
+        return verfiableURI;
     }
 }
