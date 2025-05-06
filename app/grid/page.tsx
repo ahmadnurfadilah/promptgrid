@@ -61,7 +61,7 @@ export default function Grid() {
         <>
             {contextAccounts[0] === accounts[0] && (
                 <div className="fixed bottom-4 right-4 z-10">
-                    <Link href="/grid/create" className="bg-indigo-600 text-white size-12 rounded-full flex items-center justify-center shadow hover:shadow-xl hover:bg-indigo-700 transition-all">
+                    <Link href="/grid/sell" className="bg-indigo-600 text-white size-12 rounded-full flex items-center justify-center shadow hover:shadow-xl hover:bg-indigo-700 transition-all">
                         <PlusIcon />
                     </Link>
                 </div>
