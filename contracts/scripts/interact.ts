@@ -4,8 +4,8 @@ async function main() {
   // This script demonstrates how to interact with the PromptGrid contracts
 
   // First, get the deployed contract addresses
-  const promptGridNFTAddress = "0x29f5E2b9a56dC0E2CE0462b69fC7Ee05e03ECc88";
-  const promptGridMarketplaceAddress = "0xa6b304496d0e9Fde6B939393C6Fe8BDc4Be442Ca";
+  const promptGridNFTAddress = "0x52aBc4347D646463Ac4769247A5cb90Fcc606ebE";
+  const promptGridMarketplaceAddress = "0x70345Ef36AB043e89a4d0c6c945E0177DE627a19";
 
   // Get signers
   const [creator, user1] = await ethers.getSigners();

@@ -916,6 +916,25 @@
                 "type": "bytes32"
             }
         ],
+        "name": "getPromptContent",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "_tokenId",
+                "type": "bytes32"
+            }
+        ],
         "name": "getPromptDetails",
         "outputs": [
             {
@@ -937,6 +956,11 @@
                 "internalType": "bool",
                 "name": "isActive",
                 "type": "bool"
+            },
+            {
+                "internalType": "string",
+                "name": "content",
+                "type": "string"
             }
         ],
         "stateMutability": "view",
@@ -1100,13 +1124,7 @@
             }
         ],
         "name": "purchasePrompt",
-        "outputs": [
-            {
-                "internalType": "string",
-                "name": "",
-                "type": "string"
-            }
-        ],
+        "outputs": [],
         "stateMutability": "payable",
         "type": "function"
     },

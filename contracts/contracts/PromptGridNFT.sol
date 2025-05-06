@@ -151,7 +151,7 @@ contract PromptGridNFT is LSP8Mintable {
      * @dev Allows users to purchase and use a prompt
      * @param _tokenId The tokenId of the prompt to purchase
      */
-    function purchasePrompt(bytes32 _tokenId) external payable returns (string memory) {
+    function purchasePrompt(bytes32 _tokenId) external payable {
         Prompt memory prompt = prompts[_tokenId];
 
         // Validate prompt
@@ -159,16 +159,9 @@ contract PromptGridNFT is LSP8Mintable {
         require(prompt.price > 0, "Prompt is free to use");
         require(msg.value >= prompt.price, "Insufficient payment");
 
-        // Calculate the fee split based on platform fee percentage
-        uint256 creatorShare = (prompt.price * (100 - platformFeePercentage)) / 100;
-        // Platform fee is automatically kept in the contract
-
-        // Transfer the creator's share
-        payable(prompt.creator).transfer(creatorShare);
+        payable(prompt.creator).transfer(msg.value);
 
         emit PromptPurchased(_tokenId, msg.sender, prompt.price);
-
-        return prompt.content;
     }
 
     /**
@@ -229,7 +222,8 @@ contract PromptGridNFT is LSP8Mintable {
             uint256 promptType,
             uint256 price,
             address creator,
-            bool isActive
+            bool isActive,
+            string memory content
         )
     {
         Prompt memory prompt = prompts[_tokenId];
@@ -237,8 +231,13 @@ contract PromptGridNFT is LSP8Mintable {
             prompt.promptType,
             prompt.price,
             prompt.creator,
-            prompt.isActive
+            prompt.isActive,
+            prompt.content
         );
+    }
+
+    function getPromptContent(bytes32 _tokenId) external view returns (string memory) {
+        return prompts[_tokenId].content;
     }
 
     /**

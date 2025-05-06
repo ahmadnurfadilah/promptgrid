@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AudioLinesIcon, ChevronDown, CircleXIcon, ImageIcon, TextIcon, VideoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useUpProvider } from "@/components/up-provider";
 
 export default function Prompt() {
-  const { id } = useParams();
+	const { id } = useParams();
 	const router = useRouter();
+  const { accounts, provider } = useUpProvider();
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [image, setImage] = useState<string>("");
@@ -24,7 +26,6 @@ export default function Prompt() {
     const getData = async () => {
       const web3Readonly = new Web3(process.env.NEXT_PUBLIC_LUKSO_RPC || "https://rpc.testnet.lukso.network");
       const contractReadonly = new web3Readonly.eth.Contract(ABI, process.env.NEXT_PUBLIC_PROMPTGRID_NFT_CONTRACT_ADDRESS!);
-			console.log("contractReadonly", contractReadonly);
       const getData = await contractReadonly.methods.getDataForTokenId(Web3.utils.padLeft(Web3.utils.numberToHex(id as string), 64), '0x9afb95cacc9f95858ec44aa8c3b685511002e30ae54415823f406128b85b238e').call();
       const promptDetails = await contractReadonly.methods.getPromptDetails(Web3.utils.padLeft(Web3.utils.numberToHex(id as string), 64)).call();
 
@@ -72,6 +73,37 @@ export default function Prompt() {
 
     getData();
   }, [id]);
+
+	const purchasePrompt = async () => {
+		// @ts-expect-error - provider is not defined in the window object
+		const web3Readonly = new Web3(provider);
+		const contract = new web3Readonly.eth.Contract(ABI, process.env.NEXT_PUBLIC_PROMPTGRID_NFT_CONTRACT_ADDRESS!);
+
+		const tokenId = Web3.utils.padLeft(Web3.utils.numberToHex(id as string), 64);
+
+		try {
+			let purchase;
+			if (price === '0') {
+				// Handle free prompts without sending value
+				purchase = await contract.methods.purchasePrompt(tokenId).send({
+					from: accounts[0],
+				});
+			} else {
+				const weiValue = web3Readonly.utils.toWei(price, "ether");
+
+				// Send the transaction with exact Wei value
+				purchase = await contract.methods.purchasePrompt(tokenId).send({
+					from: accounts[0],
+					value: weiValue,
+				});
+			}
+
+			console.log("purchase", purchase);
+		} catch (error) {
+			console.error("Purchase error:", error);
+			throw error;
+		}
+	}
 
   return (
     <div className="w-full h-screen relative @container">
@@ -130,9 +162,26 @@ export default function Prompt() {
 							</Sheet>
 
 							<div className="flex items-center gap-1">
-								<Button className="bg-indigo-600 hover:bg-indigo-700">
-									Try it out
-								</Button>
+
+								<Sheet>
+								<SheetTrigger>
+									<Button className="bg-indigo-600 hover:bg-indigo-700">
+										Try it out
+									</Button>
+								</SheetTrigger>
+								<SheetContent side="bottom" className="max-h-[85vh] overflow-auto">
+									<SheetHeader>
+										<SheetTitle>Purchase Prompt</SheetTitle>
+										<SheetDescription>
+											<p className="mb-4">Purchase this prompt for {price === '0' ? 'Free' : `${price} LYX`} to use it. The result will show immediately.</p>
+
+											<Button onClick={purchasePrompt}>
+												Purchase
+											</Button>
+										</SheetDescription>
+									</SheetHeader>
+								</SheetContent>
+							</Sheet>
 							</div>
 						</div>
 					</div>
