@@ -7,30 +7,38 @@ import Web3 from "web3";
 import ABI from "@/lib/abi/promptgrid.json";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { AudioLinesIcon, ChevronDown, ImageIcon, TextIcon, VideoIcon } from "lucide-react";
+import { AudioLinesIcon, ChevronDown, CircleXIcon, ImageIcon, TextIcon, VideoIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Prompt() {
   const { id } = useParams();
+	const router = useRouter();
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [image, setImage] = useState<string>("");
   const [promptType, setPromptType] = useState<number>(0);
   const [price, setPrice] = useState<string>("");
+	const [notFound, setNotFound] = useState<boolean>(false);
 
   useEffect(() => {
     const getData = async () => {
       const web3Readonly = new Web3(process.env.NEXT_PUBLIC_LUKSO_RPC || "https://rpc.testnet.lukso.network");
       const contractReadonly = new web3Readonly.eth.Contract(ABI, process.env.NEXT_PUBLIC_PROMPTGRID_NFT_CONTRACT_ADDRESS!);
+			console.log("contractReadonly", contractReadonly);
       const getData = await contractReadonly.methods.getDataForTokenId(Web3.utils.padLeft(Web3.utils.numberToHex(id as string), 64), '0x9afb95cacc9f95858ec44aa8c3b685511002e30ae54415823f406128b85b238e').call();
       const promptDetails = await contractReadonly.methods.getPromptDetails(Web3.utils.padLeft(Web3.utils.numberToHex(id as string), 64)).call();
-
-      console.log("promptDetails", promptDetails);
 
       // Set promptType and price from promptDetails
       if (promptDetails) {
         setPromptType(Number(promptDetails[0]));
-        setPrice(web3Readonly.utils.fromWei(promptDetails[3], 'ether'));
-      }
+        setPrice(web3Readonly.utils.fromWei(promptDetails[1], 'ether'));
+
+				if (promptDetails[2] === "") {
+					setNotFound(true);
+				}
+      } else {
+					setNotFound(true);
+			}
 
       if (getData) {
         // @ts-expect-error - getData is not defined
@@ -55,6 +63,10 @@ export default function Prompt() {
               }
             }
         })
+				.catch((err) => {
+					console.log(err);
+					setNotFound(true);
+				});
       }
     }
 
@@ -67,61 +79,75 @@ export default function Prompt() {
       	<img src={image} alt={name} className="w-full h-full object-cover" />
 			)}
 
-			<div className="absolute top-6 left-6">
-				<div>
-					{promptType === 1 && (
-						<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
-							<TextIcon className="w-4 h-4" />
+			{!notFound ? (
+				<>
+					<div className="absolute top-6 left-6">
+						<div>
+							{promptType === 1 && (
+								<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
+									<TextIcon className="w-4 h-4" />
+								</div>
+							)}
+							{promptType === 2 && (
+								<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
+									<ImageIcon className="w-4 h-4" />
+								</div>
+							)}
+							{promptType === 3 && (
+								<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
+									<AudioLinesIcon className="w-4 h-4" />
+								</div>
+							)}
+							{promptType === 4 && (
+								<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
+									<VideoIcon className="w-4 h-4" />
+								</div>
+							)}
 						</div>
-					)}
-					{promptType === 2 && (
-						<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
-							<ImageIcon className="w-4 h-4" />
+					</div>
+
+					<div className="absolute bottom-0 inset-x-0 bg-black/20 backdrop-blur-sm p-2 @md:p-3">
+						<div className="flex items-center justify-between gap-2">
+							<Sheet>
+								<SheetTrigger className="flex items-center gap-1">
+									<ChevronDown className="w-4 h-4 text-white" />
+									<span className="text-white text-base font-bold line-clamp-1">{name}</span>
+								</SheetTrigger>
+								<SheetContent side="bottom" className="max-h-[85vh] overflow-auto">
+									<SheetHeader>
+										<SheetTitle>{name}</SheetTitle>
+										<SheetDescription>
+											{description}
+											{promptType > 0 && (
+												<div className="mt-4">
+													<p><strong>Type:</strong> {promptType === 1 ? 'Text' : promptType === 2 ? 'Image' : promptType === 3 ? 'Audio' : 'Video'}</p>
+													<p><strong>Price:</strong> {price === '0' ? 'Free' : `${price} LYX`}</p>
+												</div>
+											)}
+										</SheetDescription>
+									</SheetHeader>
+								</SheetContent>
+							</Sheet>
+
+							<div className="flex items-center gap-1">
+								<Button className="bg-indigo-600 hover:bg-indigo-700">
+									Try it out
+								</Button>
+							</div>
 						</div>
-					)}
-					{promptType === 3 && (
-						<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
-							<AudioLinesIcon className="w-4 h-4" />
-						</div>
-					)}
-					{promptType === 4 && (
-						<div className="bg-gray-900 text-white px-2 py-1 rounded-md">
-							<VideoIcon className="w-4 h-4" />
-						</div>
-					)}
+					</div>
+				</>
+			) : (
+				<div className="w-full h-full flex items-center justify-center">
+					<div>
+						<CircleXIcon className="w-10 h-10 text-red-600 mx-auto mb-1" />
+						<p className="text-center text-sm mb-4">Prompt not found</p>
+						<Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push("/grid/sell")}>
+							Create Prompt
+						</Button>
+					</div>
 				</div>
-			</div>
-
-      <div className="absolute bottom-0 inset-x-0 bg-black/20 backdrop-blur-sm p-2 @md:p-3">
-        <div className="flex items-center justify-between gap-2">
-					<Sheet>
-						<SheetTrigger className="flex items-center gap-1">
-							<ChevronDown className="w-4 h-4 text-white" />
-							<span className="text-white text-base font-bold line-clamp-1">{name}</span>
-						</SheetTrigger>
-						<SheetContent side="bottom" className="max-h-[85vh] overflow-auto">
-							<SheetHeader>
-								<SheetTitle>{name}</SheetTitle>
-								<SheetDescription>
-									{description}
-                  {promptType > 0 && (
-                    <div className="mt-4">
-                      <p><strong>Type:</strong> {promptType === 1 ? 'Text' : promptType === 2 ? 'Image' : promptType === 3 ? 'Audio' : 'Video'}</p>
-                      <p><strong>Price:</strong> {price === '0' ? 'Free' : `${price} LYX`}</p>
-                    </div>
-                  )}
-								</SheetDescription>
-							</SheetHeader>
-						</SheetContent>
-					</Sheet>
-
-          <div className="flex items-center gap-1">
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
-              Try it out
-            </Button>
-          </div>
-        </div>
-      </div>
+			)}
     </div>
   );
 }

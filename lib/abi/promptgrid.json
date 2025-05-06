@@ -924,11 +924,6 @@
                 "type": "uint256"
             },
             {
-                "internalType": "string",
-                "name": "content",
-                "type": "string"
-            },
-            {
                 "internalType": "uint256",
                 "name": "price",
                 "type": "uint256"
@@ -1105,7 +1100,13 @@
             }
         ],
         "name": "purchasePrompt",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "",
+                "type": "string"
+            }
+        ],
         "stateMutability": "payable",
         "type": "function"
     },

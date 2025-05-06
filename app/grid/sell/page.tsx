@@ -74,6 +74,7 @@ export default function Sell() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [listingFee, setListingFee] = useState<string>("0.005");
+  const [tokenIdCounter, setTokenIdCounter] = useState<number>(0);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -93,6 +94,17 @@ export default function Sell() {
       router.push("/grid");
     }
   }, [contextAccounts, accounts, router]);
+
+  useEffect(() => {
+    const getTokenIdCounter = async () => {
+      const web3Readonly = new Web3(process.env.NEXT_PUBLIC_LUKSO_RPC || "https://rpc.testnet.lukso.network");
+      const contractReadonly = new web3Readonly.eth.Contract(ABI, process.env.NEXT_PUBLIC_PROMPTGRID_NFT_CONTRACT_ADDRESS!);
+      const tokenIdCounter = await contractReadonly.methods.getTokenIdCounter().call();
+      setTokenIdCounter(Number(tokenIdCounter));
+    }
+
+    getTokenIdCounter();
+  }, []);
 
   // TODO: Get the listing fee from the contract
   useEffect(() => {
@@ -182,8 +194,9 @@ export default function Sell() {
         LSP4Metadata: {
           name: values.name,
           description: values.description,
+          exampleOutput: values.example_output || "",
           links: [
-            { title: "Try it out", url: "https://promptgrid.vercel.app/grid/:id" },
+            { title: "Try it out", url: `https://promptgrid.vercel.app/grid/${tokenIdCounter + 1}` },
           ],
           attributes: [
             { key: "Type", value: generationType },
@@ -217,8 +230,7 @@ export default function Sell() {
       const result = await contract.methods
         .createPrompt(
           promptTypeId,
-          values.name,
-          values.description,
+          values.prompt,
           priceInWei,
           metadata
         )
@@ -619,19 +631,13 @@ export default function Sell() {
                   Prompt Published Successfully!
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Your prompt is now available on the PromptGrid marketplace.
-                  You can manage it from your dashboard.
+                  Copy this link to your GRID: https://promptgrid.vercel.app/grid/{tokenIdCounter + 1}
                 </p>
+
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
-                    onClick={() => router.push("/grid/dashboard")}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Go to Dashboard
-                  </Button>
-                  <Button
                     variant="outline"
-                    onClick={() => router.push("/grid/id")}
+                    onClick={() => router.push(`/grid/${tokenIdCounter + 1}`)}
                   >
                     See the prompt
                   </Button>

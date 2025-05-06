@@ -4,8 +4,8 @@ async function main() {
   // This script demonstrates how to interact with the PromptGrid contracts
 
   // First, get the deployed contract addresses
-  const promptGridNFTAddress = "0x425d4408203415Eb49a922fb185bC5d2b0464eBD";
-  const promptGridMarketplaceAddress = "0x3d3401c3279Df77D184d8DCAb1Fd0de694b671Cf";
+  const promptGridNFTAddress = "0x29f5E2b9a56dC0E2CE0462b69fC7Ee05e03ECc88";
+  const promptGridMarketplaceAddress = "0xa6b304496d0e9Fde6B939393C6Fe8BDc4Be442Ca";
 
   // Get signers
   const [creator, user1] = await ethers.getSigners();
@@ -101,7 +101,7 @@ async function main() {
     console.log(`- Type: ${promptDetails[0]}`);
     console.log(`- description: ${promptDetails[1]}`);
     console.log(`- name: ${promptDetails[2]}`);
-    console.log(`- Price: ${ethers.formatEther(promptDetails[3])} LYX`);
+    console.log(`- Price: ${ethers.formatEther(promptDetails[1])} LYX`);
     console.log(`- Creator: ${promptDetails[4]}`);
     console.log(`- Active: ${promptDetails[5]}`);
 
