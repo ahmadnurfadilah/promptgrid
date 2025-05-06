@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
 import {
   Form,
   FormControl,
@@ -21,6 +23,9 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import ABI from "@/lib/abi/promptgrid.json";
+import Web3 from "web3";
+import axios from "axios";
 
 const formSchema = z.object({
   name: z
@@ -39,35 +44,43 @@ const formSchema = z.object({
     .max(500, {
       message: "Description must be less than 200 characters.",
     }),
-  price: z.number().min(0, {
-    message: "Price must be greater than 0.",
-  }),
+  price: z.string(),
   version: z.string(),
-  prompt: z.string().min(10, {
-    message: "Prompt must be at least 10 characters.",
-  }).max(64000, {
-    message: "Prompt must be less than 64000 characters.",
-  }),
-  example_output: z.string().min(10, {
-    message: "Example output must be at least 10 characters.",
-  }).max(64000, {
-    message: "Example output must be less than 64000 characters.",
-  }),
+  prompt: z
+    .string()
+    .min(10, {
+      message: "Prompt must be at least 10 characters.",
+    })
+    .max(64000, {
+      message: "Prompt must be less than 64000 characters.",
+    }),
+  example_output: z
+    .string()
+    .min(10, {
+      message: "Example output must be at least 10 characters.",
+    })
+    .max(64000, {
+      message: "Example output must be less than 64000 characters.",
+    }),
+  image: z.instanceof(FileList).optional(),
 });
 
 export default function Sell() {
   const router = useRouter();
-  const { contextAccounts, accounts } = useUpProvider();
+  const { contextAccounts, accounts, provider } = useUpProvider();
   const [activeStep, setActiveStep] = useState<number>(1);
   const [generationType, setGenerationType] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [listingFee, setListingFee] = useState<string>("0.005");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
-      price: 0,
+      price: "0",
     },
   });
 
@@ -81,8 +94,164 @@ export default function Sell() {
     }
   }, [contextAccounts, accounts, router]);
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log(values);
+  // TODO: Get the listing fee from the contract
+  useEffect(() => {
+    if (generationType === "text") {
+      setListingFee("0.001");
+    } else if (generationType === "image") {
+      setListingFee("0.002");
+    } else if (generationType === "audio") {
+      setListingFee("0.003");
+    } else if (generationType === "video") {
+      setListingFee("0.004");
+    }
+  }, [generationType]);
+
+  const uploadToIPFS = async (file: File): Promise<string> => {
+    try {
+      // Create form data for the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const pinataEndpoint = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+
+      const response = await axios.post(pinataEndpoint, formData, {
+        headers: {
+          "Content-Type": `multipart/form-data`,
+          pinata_api_key: process.env.NEXT_PUBLIC_PINATA_API_KEY || "",
+          pinata_secret_api_key:
+            process.env.NEXT_PUBLIC_PINATA_API_SECRET || "",
+        },
+      });
+
+      if (response.data && response.data.IpfsHash) {
+        return `ipfs://${response.data.IpfsHash}`;
+      } else {
+        throw new Error("Failed to upload to IPFS");
+      }
+    } catch (error) {
+      console.error("Error uploading to IPFS:", error);
+      throw error;
+    }
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setIsSubmitting(true);
+
+      const images = [];
+      let ipfsUrl = "";
+
+      // @ts-expect-error - provider is not defined in the window object
+      const web3 = new Web3(provider);
+
+      // Upload the image to IPFS if it exists
+      if (values.image && values.image.length > 0) {
+        const file = values.image[0];
+
+        // Upload to Pinata/IPFS
+        try {
+          ipfsUrl = await uploadToIPFS(file);
+          console.log("IPFS URL:", ipfsUrl);
+
+          // Hash the file for verification
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = new Uint8Array(arrayBuffer);
+          const imageHash = web3.utils.keccak256(buffer);
+
+          // Add image to metadata
+          images.push({
+            width: 1024,
+            height: 1024,
+            url: ipfsUrl,
+            verification: {
+              method: "keccak256(bytes)",
+              data: imageHash,
+            },
+          });
+        } catch (error) {
+          console.error("Failed to upload image to IPFS:", error);
+          toast.error("Failed to upload image to IPFS. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Prepare metadata for NFT
+      const metadata = JSON.stringify({
+        LSP4Metadata: {
+          name: values.name,
+          description: values.description,
+          links: [
+            { title: "Try it out", url: "https://promptgrid.vercel.app/grid/:id" },
+          ],
+          attributes: [
+            { key: "Type", value: generationType },
+            { key: "Model", value: model },
+            { key: "Version", value: values.version },
+          ],
+          icon: [],
+          backgroundImage: [],
+          assets: [],
+          images: images,
+        },
+      });
+
+      // Convert price to wei (assuming it's in LYX)
+      const priceInWei = web3.utils.toWei(values.price.toString(), "ether");
+
+      // Get the prompt type ID based on generationType
+      let promptTypeId = 1; // Default to TEXT_PROMPT
+      if (generationType === "image") promptTypeId = 2; // IMAGE_PROMPT
+      if (generationType === "audio") promptTypeId = 3; // AUDIO_PROMPT
+      if (generationType === "video") promptTypeId = 4; // VIDEO_PROMPT
+
+      // Get contract address from environment variable
+      const contractAddress =
+        process.env.NEXT_PUBLIC_PROMPTGRID_NFT_CONTRACT_ADDRESS!;
+
+      // Initialize contract
+      const contract = new web3.eth.Contract(ABI, contractAddress);
+
+      // Call createPrompt method
+      const result = await contract.methods
+        .createPrompt(
+          promptTypeId,
+          values.name,
+          values.description,
+          priceInWei,
+          metadata
+        )
+        .send({
+          from: accounts[0],
+          value: web3.utils.toWei(listingFee, "ether"),
+        });
+
+      console.log("Transaction result:", result);
+
+      // If successful, move to the next step
+      setActiveStep(3);
+    } catch (error) {
+      console.error("Error creating prompt:", error);
+      toast.error("Failed to create prompt. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle image preview
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
   };
 
   return (
@@ -244,11 +413,19 @@ export default function Sell() {
                       <FormItem>
                         <FormLabel>Price</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Enter your prompt price"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Enter your prompt price"
+                              className="pr-12"
+                              {...field}
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                              LYX
+                            </div>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -273,11 +450,60 @@ export default function Sell() {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({
+                    field: { onChange, name, onBlur, ref, disabled },
+                  }) => (
+                    <FormItem>
+                      <FormLabel>Cover Image</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              onChange(e.target.files);
+                              handleImageChange(e);
+                            }}
+                            name={name}
+                            onBlur={onBlur}
+                            ref={ref}
+                            disabled={disabled}
+                          />
+                          {imagePreview && (
+                            <div className="mt-2">
+                              <img
+                                src={imagePreview}
+                                alt="Preview"
+                                className="max-h-32 border rounded-md"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="flex items-center justify-between">
                   <div></div>
                   <Button
+                    type="button"
                     className="bg-indigo-600 hover:bg-indigo-700"
-                    onClick={() => setActiveStep(2)}
+                    onClick={() => {
+                      if (!generationType) {
+                        toast.error("Please select a generation type");
+                        return;
+                      }
+                      if (!model) {
+                        toast.error("Please select a model");
+                        return;
+                      }
+                      setActiveStep(2);
+                    }}
                   >
                     Continue
                   </Button>
@@ -302,9 +528,9 @@ export default function Sell() {
                           >
                             <option value="">Select version</option>
                             {generationTypes
-                              .find(type => type.type === generationType)
-                              ?.models.find(m => m.id === model.toLowerCase())
-                              ?.versions.map(version => (
+                              .find((type) => type.type === generationType)
+                              ?.models.find((m) => m.id === model.toLowerCase())
+                              ?.versions.map((version) => (
                                 <option key={version.id} value={version.id}>
                                   {version.name}
                                 </option>
@@ -317,7 +543,7 @@ export default function Sell() {
                   />
                 )}
 
-								<FormField
+                <FormField
                   control={form.control}
                   name="prompt"
                   render={({ field }) => (
@@ -330,7 +556,9 @@ export default function Sell() {
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>Put any variables in [square brackets].</FormDescription>
+                      <FormDescription>
+                        Put any variables in [square brackets].
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -355,44 +583,55 @@ export default function Sell() {
                 />
 
                 <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={() => setActiveStep(1)}
-                  >
+                  <Button variant="outline" onClick={() => setActiveStep(1)}>
                     Back
                   </Button>
                   <Button
                     className="bg-indigo-600 hover:bg-indigo-700"
                     type="submit"
+                    disabled={isSubmitting}
                   >
-                    Submit
+                    {isSubmitting ? "Submitting..." : "Submit"}
                   </Button>
                 </div>
-							</div>
-						)}
+              </div>
+            )}
 
             {/* Step 3: Success */}
             {activeStep === 3 && (
               <div className="p-6 text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-8 h-8 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold mb-2">Prompt Published Successfully!</h2>
+                <h2 className="text-xl font-semibold mb-2">
+                  Prompt Published Successfully!
+                </h2>
                 <p className="text-gray-600 mb-6">
-                  Your prompt is now available on the PromptGrid marketplace. You can manage it from your dashboard.
+                  Your prompt is now available on the PromptGrid marketplace.
+                  You can manage it from your dashboard.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Button
-                    onClick={() => router.push('/grid/dashboard')}
+                    onClick={() => router.push("/grid/dashboard")}
                     className="bg-indigo-600 hover:bg-indigo-700"
                   >
                     Go to Dashboard
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => router.push('/grid/id')}
+                    onClick={() => router.push("/grid/id")}
                   >
                     See the prompt
                   </Button>

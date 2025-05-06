@@ -4,8 +4,8 @@ async function main() {
   // This script demonstrates how to interact with the PromptGrid contracts
 
   // First, get the deployed contract addresses
-  const promptGridNFTAddress = "0x44e8Aa14d7bBE568813db00DD83A5052F13055e9";
-  const promptGridMarketplaceAddress = "0xad438E7b473F5EA59451Ca99b6c18f689Eb2410b";
+  const promptGridNFTAddress = "0x9f705aA97e9734cb81c7B13488B600b9eAb1B4eD";
+  const promptGridMarketplaceAddress = "0x4e27a4c736E70A8A93ed162E2Ad1667C6B29108e";
 
   // Get signers
   const [creator, user1] = await ethers.getSigners();
@@ -51,16 +51,36 @@ async function main() {
     console.log("\n2. Creator creates a prompt...");
 
     const promptType = 1; // Text prompt
-    const content = "Create a poetic description of a futuristic city where nature and technology have merged harmoniously.";
-    const category = "Creative Writing";
+    const name = "Creative Writing";
+    const description = "Create a poetic description of a futuristic city where nature and technology have merged harmoniously.";
     const price = ethers.parseEther("0.1"); // 0.1 LYX to use this prompt
     const listingFee = ethers.parseEther("0.005"); // Updated listing fee for text prompts
 
+    const metadata = JSON.stringify({
+      LSP4Metadata: {
+        name: "Test Prompt",
+        description: "This is a test prompt",
+        links: [
+          { title: "Try it out", url: "https://promptgrid.xyz/grid/:id" },
+        ],
+        attributes: [
+          { key: "Type", value: "text" },
+          { key: "Model", value: "claude" },
+          { key: "Version", value: "claude-3-5-sonnet" },
+        ],
+        icon: [],
+        backgroundImage: [],
+        assets: [],
+        images: [],
+      },
+    });
+
     const createTx = await promptGridNFT.connect(creator).createPrompt(
       promptType,
-      content,
-      category,
+      description,
+      name,
       price,
+      metadata,
       { value: listingFee }
     );
 
@@ -80,8 +100,8 @@ async function main() {
     const promptDetails = await promptGridNFT.getPromptDetails(tokenId);
     console.log("Prompt Details:");
     console.log(`- Type: ${promptDetails[0]}`);
-    console.log(`- Content: ${promptDetails[1]}`);
-    console.log(`- Category: ${promptDetails[2]}`);
+    console.log(`- description: ${promptDetails[1]}`);
+    console.log(`- name: ${promptDetails[2]}`);
     console.log(`- Price: ${ethers.formatEther(promptDetails[3])} LYX`);
     console.log(`- Creator: ${promptDetails[4]}`);
     console.log(`- Active: ${promptDetails[5]}`);

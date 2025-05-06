@@ -7,6 +7,7 @@ import { cookieToInitialState } from "wagmi";
 import { getConfig } from "./config";
 import { headers } from "next/headers";
 import { Providers } from "./providers";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,8 @@ export default async function RootLayout({
           >
             {/* <NavHeader /> */}
             {children}
+
+            <Toaster />
           </ThemeProvider>
         </Providers>
       </body>

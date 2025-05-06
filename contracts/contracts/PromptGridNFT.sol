@@ -84,10 +84,10 @@ contract PromptGridNFT is LSP8Mintable {
         )
     {
         // Initialize listing fees based on PRD recommendations
-        listingFees[TEXT_PROMPT] = 5 ether; // 5 LYX for Text Prompts
-        listingFees[IMAGE_PROMPT] = 8 ether; // 8 LYX for Image Prompts
-        listingFees[AUDIO_PROMPT] = 10 ether; // 10 LYX for Audio Prompts
-        listingFees[VIDEO_PROMPT] = 15 ether; // 15 LYX for Video Prompts
+        listingFees[TEXT_PROMPT] = 1 ether;
+        listingFees[IMAGE_PROMPT] = 2 ether;
+        listingFees[AUDIO_PROMPT] = 3 ether;
+        listingFees[VIDEO_PROMPT] = 4 ether;
     }
 
     /**
@@ -260,5 +260,13 @@ contract PromptGridNFT is LSP8Mintable {
     function getMetadata(string memory metadata) public pure returns (bytes memory) {
         bytes memory verfiableURI = bytes.concat(hex"00006f357c6a0020", keccak256(bytes(metadata)), abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(metadata))));
         return verfiableURI;
+    }
+
+    function getListingFee(uint256 _promptType) external view returns (uint256) {
+        return listingFees[_promptType];
+    }
+
+    function getTokenIdCounter() external view returns (uint256) {
+        return _tokenIdCounter;
     }
 }
