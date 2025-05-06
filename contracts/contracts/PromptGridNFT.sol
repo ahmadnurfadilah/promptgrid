@@ -41,8 +41,7 @@ contract PromptGridNFT is LSP8Mintable {
     // Prompt metadata structure
     struct Prompt {
         uint256 promptType;
-        string name;
-        string description;
+        string content;
         uint256 price; // 0 for free prompts
         address creator;
         bool isActive;
@@ -93,14 +92,12 @@ contract PromptGridNFT is LSP8Mintable {
     /**
      * @dev Creates a new prompt as an NFT
      * @param _promptType The type of prompt (1=Text, 2=Image, 3=Audio, 4=Video)
-     * @param _name The prompt name
-     * @param _description The description of the prompt
+     * @param _content The content of the prompt
      * @param _price The price for using the prompt (0 for free)
      */
     function createPrompt(
         uint256 _promptType,
-        string memory _name,
-        string memory _description,
+        string memory _content,
         uint256 _price,
         string memory metadata
     ) external payable returns (bytes32) {
@@ -123,8 +120,7 @@ contract PromptGridNFT is LSP8Mintable {
         // Create prompt struct
         Prompt memory newPrompt = Prompt({
             promptType: _promptType,
-            name: _name,
-            description: _description,
+            content: _content,
             price: _price,
             creator: msg.sender,
             isActive: true
@@ -229,8 +225,7 @@ contract PromptGridNFT is LSP8Mintable {
         view
         returns (
             uint256 promptType,
-            string memory name,
-            string memory description,
+            string memory content,
             uint256 price,
             address creator,
             bool isActive
@@ -239,8 +234,7 @@ contract PromptGridNFT is LSP8Mintable {
         Prompt memory prompt = prompts[_tokenId];
         return (
             prompt.promptType,
-            prompt.name,
-            prompt.description,
+            prompt.content,
             prompt.price,
             prompt.creator,
             prompt.isActive
@@ -264,6 +258,15 @@ contract PromptGridNFT is LSP8Mintable {
 
     function getListingFee(uint256 _promptType) external view returns (uint256) {
         return listingFees[_promptType];
+    }
+
+    function getListingFees() external view returns (uint256[] memory) {
+        uint256[] memory fees = new uint256[](4);
+        fees[0] = listingFees[TEXT_PROMPT];
+        fees[1] = listingFees[IMAGE_PROMPT];
+        fees[2] = listingFees[AUDIO_PROMPT];
+        fees[3] = listingFees[VIDEO_PROMPT];
+        return fees;
     }
 
     function getTokenIdCounter() external view returns (uint256) {

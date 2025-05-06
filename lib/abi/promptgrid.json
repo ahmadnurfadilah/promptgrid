@@ -695,12 +695,7 @@
             },
             {
                 "internalType": "string",
-                "name": "_name",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "_description",
+                "name": "_content",
                 "type": "string"
             },
             {
@@ -846,6 +841,38 @@
     {
         "inputs": [
             {
+                "internalType": "uint256",
+                "name": "_promptType",
+                "type": "uint256"
+            }
+        ],
+        "name": "getListingFee",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getListingFees",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "string",
                 "name": "metadata",
                 "type": "string"
@@ -898,12 +925,7 @@
             },
             {
                 "internalType": "string",
-                "name": "name",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "description",
+                "name": "content",
                 "type": "string"
             },
             {
@@ -920,6 +942,19 @@
                 "internalType": "bool",
                 "name": "isActive",
                 "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getTokenIdCounter",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -1039,12 +1074,7 @@
             },
             {
                 "internalType": "string",
-                "name": "name",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "description",
+                "name": "content",
                 "type": "string"
             },
             {

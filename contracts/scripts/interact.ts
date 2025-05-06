@@ -4,8 +4,8 @@ async function main() {
   // This script demonstrates how to interact with the PromptGrid contracts
 
   // First, get the deployed contract addresses
-  const promptGridNFTAddress = "0x9f705aA97e9734cb81c7B13488B600b9eAb1B4eD";
-  const promptGridMarketplaceAddress = "0x4e27a4c736E70A8A93ed162E2Ad1667C6B29108e";
+  const promptGridNFTAddress = "0x425d4408203415Eb49a922fb185bC5d2b0464eBD";
+  const promptGridMarketplaceAddress = "0x3d3401c3279Df77D184d8DCAb1Fd0de694b671Cf";
 
   // Get signers
   const [creator, user1] = await ethers.getSigners();
@@ -29,12 +29,13 @@ async function main() {
 
   try {
     // Update listing fees (only contract owner can do this)
-    await promptGridNFT.updateListingFee(TEXT_PROMPT, ethers.parseEther("0.005"));
-    await promptGridNFT.updateListingFee(IMAGE_PROMPT, ethers.parseEther("0.008"));
-    await promptGridNFT.updateListingFee(AUDIO_PROMPT, ethers.parseEther("0.010"));
-    await promptGridNFT.updateListingFee(VIDEO_PROMPT, ethers.parseEther("0.015"));
+    await promptGridNFT.updateListingFee(TEXT_PROMPT, ethers.parseEther("0.001"));
+    await promptGridNFT.updateListingFee(IMAGE_PROMPT, ethers.parseEther("0.002"));
+    await promptGridNFT.updateListingFee(AUDIO_PROMPT, ethers.parseEther("0.003"));
+    await promptGridNFT.updateListingFee(VIDEO_PROMPT, ethers.parseEther("0.004"));
 
     console.log("Listing fees updated successfully!");
+    return;
 
     // Verify the new listing fees
     const textPromptFee = await promptGridNFT.listingFees(TEXT_PROMPT);
@@ -51,8 +52,7 @@ async function main() {
     console.log("\n2. Creator creates a prompt...");
 
     const promptType = 1; // Text prompt
-    const name = "Creative Writing";
-    const description = "Create a poetic description of a futuristic city where nature and technology have merged harmoniously.";
+    const content = "Create a poetic description of a futuristic city where nature and technology have merged harmoniously.";
     const price = ethers.parseEther("0.1"); // 0.1 LYX to use this prompt
     const listingFee = ethers.parseEther("0.005"); // Updated listing fee for text prompts
 
@@ -77,8 +77,7 @@ async function main() {
 
     const createTx = await promptGridNFT.connect(creator).createPrompt(
       promptType,
-      description,
-      name,
+      content,
       price,
       metadata,
       { value: listingFee }

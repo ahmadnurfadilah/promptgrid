@@ -9,8 +9,8 @@ async function main() {
   // Deploy the PromptGridNFT contract
   const PromptGridNFT = await ethers.getContractFactory("PromptGridNFT");
   const promptGridNFT = await PromptGridNFT.deploy(
-    "PromptGrid NFT Collection Test",   // Collection name
-    "PGRIDTEST",                       // Collection symbol
+    "PromptGrid NFT Collection Test 2",   // Collection name
+    "PGRIDTEST2",                       // Collection symbol
     deployer.address               // Contract owner
   );
 
